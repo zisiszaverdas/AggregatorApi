@@ -1,15 +1,14 @@
+using AggregatorApi.Models;
+using AggregatorApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace AggregatorApi.Controllers
+namespace AggregatorApi.Controllers;
+
+[ApiController]
+[Route("[controller]")]
+public class AggregateController(IAggregationService AggregationService) : ControllerBase
 {
-    [ApiController]
-    [Route("[controller]")]
-    public class AggregateController : ControllerBase
-    {      
-        [HttpGet]
-        public IActionResult Get()
-        {
-            throw new NotImplementedException("This API is not implemented yet.");
-        }
-    }
+    [HttpGet]
+    public async Task<IActionResult> Get([FromQuery] AggregationRequest query, CancellationToken ct) =>
+        Ok(await AggregationService.GetAggregatedDataAsync(query, ct));
 }
