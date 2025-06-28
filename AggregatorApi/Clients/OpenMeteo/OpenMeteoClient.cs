@@ -1,0 +1,81 @@
+using AggregatorApi.Models;
+using System.Text.Json;
+
+namespace AggregatorApi.Clients.OpenMeteo;
+
+public class OpenMeteoClient(HttpClient HttpClient) : IApiClient
+{
+    public string SourceName => "OpenMeteo";
+    private string forcastEndpoint => "v1/forecast";
+    private const double AthensLatitude = 37.9838; // Athens, Greece
+    private const double AthensLongitude = 23.7278; // Athens, Greece
+    private const string parameterDateTimeFormat = "yyyy-MM-dd";
+
+    public async Task<IEnumerable<AggregatedItem>> FetchAsync(CancellationToken ct)
+    {
+        // TODO: handle errors and exceptions gracefully
+        var toDate = DateTime.Today;
+        var fromDate = toDate.AddDays(-7);
+
+        var url = $"{forcastEndpoint}?latitude={AthensLatitude}" +
+            $"&longitude={AthensLongitude}" +
+            $"&start_date={fromDate.ToString(parameterDateTimeFormat)}" +
+            $"&end_date={toDate.ToString(parameterDateTimeFormat)}" +
+            $"&daily=temperature_2m_max,temperature_2m_min";
+
+        using var resp = await HttpClient.GetAsync(url, ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return Enumerable.Empty<AggregatedItem>();
+        }
+
+        var json = await resp.Content.ReadAsStringAsync(ct);
+        try { 
+            return ParseWeatherResponse(json);
+        }
+        catch (Exception ex)
+        {
+            return Enumerable.Empty<AggregatedItem>();
+        }
+       
+    }
+
+    private IEnumerable<AggregatedItem> ParseWeatherResponse(string json)
+    {
+        var weatherResponse = JsonSerializer.Deserialize<WeatherDailyResponse>(json);
+        if (weatherResponse == null || weatherResponse.Daily == null)
+        {
+            return Enumerable.Empty<AggregatedItem>();
+        }
+        
+        if ((weatherResponse?.Daily?.Time) == null || weatherResponse.Daily.Temperature2mMax == null || weatherResponse.Daily.Temperature2mMin == null)
+        {
+            return Enumerable.Empty<AggregatedItem>();
+        }
+
+        var aggregatedList = new List<AggregatedItem>();
+
+        int minimumCount = new[] {
+            weatherResponse.Daily.Time.Count,
+            weatherResponse.Daily.Temperature2mMax.Count,
+            weatherResponse.Daily.Temperature2mMin.Count
+        }.Min();
+
+        for (int i = 0; i < minimumCount; i++)
+        {
+            var day = weatherResponse.Daily.Time[i];
+            var max = weatherResponse.Daily.Temperature2mMax[i];
+            var min = weatherResponse.Daily.Temperature2mMin[i];
+            aggregatedList.Add(new AggregatedItem(
+                    SourceName,
+                    $"Weather Forecast for {day}",
+                    $"Max Temp: {max}{weatherResponse.DailyUnits?.Temperature2mMax}, Min Temp: {min}{weatherResponse.DailyUnits?.Temperature2mMin}",
+                    DateTime.Parse(day),
+                    "Weather",
+                    true));
+        }
+
+        return aggregatedList;
+    }
+
+}
