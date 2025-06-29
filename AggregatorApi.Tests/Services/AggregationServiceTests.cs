@@ -25,6 +25,9 @@ public class AggregationServiceTests
         );
     }
 
+    private static ApiClientResult CreateApiClientResult(params AggregatedItem[] items)
+        => new ApiClientResult(items);
+
     [Fact]
     public async Task GetAggregatedDataAsync_ReturnsAggregatedItemsFromAllClients()
     {
@@ -33,16 +36,19 @@ public class AggregationServiceTests
         var items2 = new[] { CreateItem(title: "Item2") };
 
         var client1 = Substitute.For<IApiClient>();
-        client1.FetchAsync(Arg.Any<CancellationToken>()).Returns(items1);
+        client1.FetchAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(CreateApiClientResult(items1)));
 
         var client2 = Substitute.For<IApiClient>();
-        client2.FetchAsync(Arg.Any<CancellationToken>()).Returns(items2);
+        client2.FetchAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(CreateApiClientResult(items2)));
 
         var service = new AggregationService(new[] { client1, client2 });
         var request = new AggregationRequest();
 
         // Act
-        var result = await service.GetAggregatedDataAsync(request, CancellationToken.None);
+        var response = await service.GetAggregatedDataAsync(request, CancellationToken.None);
+        var result = response.Items.ToList();
 
         // Assert
         Assert.Contains(result, x => x.Title == "Item1");
@@ -60,13 +66,15 @@ public class AggregationServiceTests
         };
 
         var client = Substitute.For<IApiClient>();
-        client.FetchAsync(Arg.Any<CancellationToken>()).Returns(items);
+        client.FetchAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(CreateApiClientResult(items)));
 
         var service = new AggregationService(new[] { client });
         var request = new AggregationRequest { Category = "Weather" };
 
         // Act
-        var result = await service.GetAggregatedDataAsync(request, CancellationToken.None);
+        var response = await service.GetAggregatedDataAsync(request, CancellationToken.None);
+        var result = response.Items.ToList();
 
         // Assert
         Assert.Single(result);
@@ -85,13 +93,15 @@ public class AggregationServiceTests
         };
 
         var client = Substitute.For<IApiClient>();
-        client.FetchAsync(Arg.Any<CancellationToken>()).Returns(items);
+        client.FetchAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(CreateApiClientResult(items)));
 
         var service = new AggregationService(new[] { client });
         var request = new AggregationRequest { Date = date };
 
         // Act
-        var result = await service.GetAggregatedDataAsync(request, CancellationToken.None);
+        var response = await service.GetAggregatedDataAsync(request, CancellationToken.None);
+        var result = response.Items.ToList();
 
         // Assert
         Assert.Single(result);
@@ -113,16 +123,17 @@ public class AggregationServiceTests
         };
 
         var client = Substitute.For<IApiClient>();
-        client.FetchAsync(Arg.Any<CancellationToken>()).Returns(items);
+        client.FetchAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(CreateApiClientResult(items)));
 
         var service = new AggregationService(new[] { client });
         var request = new AggregationRequest { SortBy = sortBy, Descending = false };
 
         // Act
-        var result = await service.GetAggregatedDataAsync(request, CancellationToken.None);
+        var response = await service.GetAggregatedDataAsync(request, CancellationToken.None);
+        var list = response.Items.ToList();
 
         // Assert
-        var list = result.ToList();
         switch (sortBy.ToLower())
         {
             case "date":
@@ -155,16 +166,17 @@ public class AggregationServiceTests
         };
 
         var client = Substitute.For<IApiClient>();
-        client.FetchAsync(Arg.Any<CancellationToken>()).Returns(items);
+        client.FetchAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(CreateApiClientResult(items)));
 
         var service = new AggregationService(new[] { client });
         var request = new AggregationRequest { SortBy = sortBy, Descending = true };
 
         // Act
-        var result = await service.GetAggregatedDataAsync(request, CancellationToken.None);
+        var response = await service.GetAggregatedDataAsync(request, CancellationToken.None);
+        var list = response.Items.ToList();
 
         // Assert
-        var list = result.ToList();
         switch (sortBy.ToLower())
         {
             case "date":

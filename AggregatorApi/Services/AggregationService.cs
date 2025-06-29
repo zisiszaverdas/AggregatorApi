@@ -12,12 +12,13 @@ public class AggregationService : IAggregationService
         _apiClients = apiClients;
     }
 
-    public async Task<IEnumerable<AggregatedItem>> GetAggregatedDataAsync(AggregationRequest query, CancellationToken ct)
+    public async Task<AggregatorResponse> GetAggregatedDataAsync(AggregationRequest query, CancellationToken ct)
     {
         var tasks = _apiClients.Select(client => client.FetchAsync(ct));
         var results = await Task.WhenAll(tasks);
-        var aggregatedData = results.SelectMany(x => x);
-
+        var aggregatedData = results.SelectMany(x => x.Items);
+        var errorsMessages = results.Where(x => x.ErrorMessage != null).Select(x => x.ErrorMessage!);
+     
         // Filtering
         if (!string.IsNullOrEmpty(query.Category))
             aggregatedData = aggregatedData.Where(x => x.Category?.Equals(query.Category, StringComparison.OrdinalIgnoreCase) == true);
@@ -34,6 +35,6 @@ public class AggregationService : IAggregationService
             _ => aggregatedData
         };
 
-        return aggregatedData;
+        return new AggregatorResponse(aggregatedData, errorsMessages);
     }
 }

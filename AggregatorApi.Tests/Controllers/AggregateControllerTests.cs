@@ -21,7 +21,7 @@ public class AggregateControllerTests
         var aggregationService = Substitute.For<IAggregationService>();
         var request = new AggregationRequest { Category = "Weather" };
         aggregationService.GetAggregatedDataAsync(request, Arg.Any<CancellationToken>())
-            .Returns(expectedItems);
+            .Returns(Task.FromResult(new AggregatorResponse(expectedItems)));
 
         var controller = new AggregateController(aggregationService);
 
@@ -30,8 +30,8 @@ public class AggregateControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var actualItems = Assert.IsAssignableFrom<IEnumerable<AggregatedItem>>(okResult.Value);
-        Assert.Equal(expectedItems, actualItems);
+        var response = Assert.IsAssignableFrom<AggregatorResponse>(okResult.Value);
+        Assert.Equal(expectedItems, response.Items);
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public class AggregateControllerTests
         };
 
         aggregationService.GetAggregatedDataAsync(request, Arg.Any<CancellationToken>())
-            .Returns(new List<AggregatedItem>());
+            .Returns(Task.FromResult(new AggregatorResponse(new List<AggregatedItem>())));
 
         var controller = new AggregateController(aggregationService);
 
@@ -66,7 +66,7 @@ public class AggregateControllerTests
         var aggregationService = Substitute.For<IAggregationService>();
         var request = new AggregationRequest();
         aggregationService.GetAggregatedDataAsync(request, Arg.Any<CancellationToken>())
-            .Returns(new List<AggregatedItem>());
+            .Returns(Task.FromResult(new AggregatorResponse(new List<AggregatedItem>())));
 
         var controller = new AggregateController(aggregationService);
 
@@ -75,7 +75,7 @@ public class AggregateControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var items = Assert.IsAssignableFrom<IEnumerable<AggregatedItem>>(okResult.Value);
-        Assert.Empty(items);
+        var response = Assert.IsAssignableFrom<AggregatorResponse>(okResult.Value);
+        Assert.Empty(response.Items);
     }
 }
