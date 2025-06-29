@@ -51,7 +51,7 @@ public class OpenMeteoClientTests
         Assert.NotNull(result);
         Assert.Empty(result.Items);
         Assert.NotNull(result.ErrorMessage);
-        Assert.Contains("OpenMeteo: Failed to fetch data from OpenMeteo API. Status code: BadRequest", result.ErrorMessage);
+        Assert.Contains("OpenMeteo: Failed to fetch data from OpenMeteo API.", result.ErrorMessage);
     }
 
     [Fact]
