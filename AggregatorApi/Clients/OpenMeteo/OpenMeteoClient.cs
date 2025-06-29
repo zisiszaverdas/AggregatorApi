@@ -22,23 +22,25 @@ public class OpenMeteoClient(HttpClient HttpClient, ILogger<OpenMeteoClient> Log
             $"&start_date={fromDate.ToString(parameterDateTimeFormat)}" +
             $"&end_date={toDate.ToString(parameterDateTimeFormat)}" +
             $"&daily=temperature_2m_max,temperature_2m_min";
-
-        using var resp = await HttpClient.GetAsync(url, ct);
-        if (!resp.IsSuccessStatusCode)
+        var json = string.Empty;
+        try
         {
-            var errorMessage = $"{SourceName}: issue fetching data from OpenMeteo API. Status code: {resp.StatusCode}";
-            return ApiClientResult.CreateErrorResult(errorMessage, Logger);
-        }
+            using var resp = await HttpClient.GetAsync(url, ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var errorMessage = $"{SourceName}: issue fetching data from OpenMeteo API. Status code: {resp.StatusCode}";
+                return ApiClientResult.CreateErrorResult(errorMessage, Logger);
+            }
 
-        var json = await resp.Content.ReadAsStringAsync(ct);
-        try { 
-            return ParseWeatherResponse(json);
+            json = await resp.Content.ReadAsStringAsync(ct);
         }
         catch (Exception ex)
         {
-            var errorMessage = $"{SourceName}: issue fetching data from OpenMeteo API. Status code: {resp.StatusCode}";
+            var errorMessage = $"{SourceName}: issue fetching data from OpenMeteo API. Exception: {ex.Message}";
             return ApiClientResult.CreateErrorResult(errorMessage, Logger, ex);
         }
+       
+        return ParseWeatherResponse(json);
        
     }
 
