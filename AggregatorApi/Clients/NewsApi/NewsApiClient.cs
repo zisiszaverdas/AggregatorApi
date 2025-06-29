@@ -110,8 +110,7 @@ public class NewsApiClient : IApiClient
             article.Title ?? "No Title",
             article.Description ?? "No Description",
             DateTime.TryParse(article.PublishedAt, out var date) ? date : DateTime.MinValue,
-            "News",
-            true
+            "News"
         ));
         return new ApiClientResult(items);
     }

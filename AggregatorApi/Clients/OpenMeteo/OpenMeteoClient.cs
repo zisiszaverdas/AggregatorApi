@@ -35,34 +35,34 @@ public class OpenMeteoClient(HttpClient httpClient, ILogger<OpenMeteoClient> log
         }
         catch (TimeoutRejectedException ex)
         {
-            var errorMessage = $"{SourceName}: Request timed out while fetching data from OpenMeteo API.";
+            var errorMessage = $"{SourceName}: Request timed out while fetching data from {SourceName} API.";
             return ApiClientResult.CreateErrorResult(errorMessage, logger, ex);
         }
         catch (HttpRequestException ex)
         {
-            var errorMessage = $"{SourceName}: Failed to fetch data from OpenMeteo API.";
+            var errorMessage = $"{SourceName}: Failed to fetch data from {SourceName} API.";
             return ApiClientResult.CreateErrorResult(errorMessage, logger, ex);
         }
         catch (JsonException ex)
         {
-            var errorMessage = $"{SourceName}: JSON deserialization error while processing OpenMeteo API response.";
+            var errorMessage = $"{SourceName}: JSON deserialization error while processing {SourceName} API response.";
             return ApiClientResult.CreateErrorResult(errorMessage, logger, ex);
         }
         catch (Exception ex)
         {
-            var errorMessage = $"{SourceName}: Unexpected error while fetching data from OpenMeteo API.";
+            var errorMessage = $"{SourceName}: Unexpected error while fetching data from {SourceName} API.";
             return ApiClientResult.CreateErrorResult(errorMessage, logger, ex);
         }
 
         if (weatherResponse == null)
         {
-            var errorMessage = $"{SourceName}: issue fetching data from OpenMeteo API. Status code was not successful.";
+            var errorMessage = $"{SourceName}: issue fetching data from {SourceName} API. Status code was not successful.";
             return ApiClientResult.CreateErrorResult(errorMessage, logger);
         }
 
         if (!IsValidWeatherResponse(weatherResponse))
         {
-            return ApiClientResult.CreateErrorResult($"{SourceName}: Error weather response JSON contains empty properties or could not be fetched.", logger);
+            return ApiClientResult.CreateErrorResult($"{SourceName}: Error response JSON contains empty properties or could not be fetched.", logger);
         }
         return BuildApiClientResult(weatherResponse);
     }
@@ -72,7 +72,7 @@ public class OpenMeteoClient(HttpClient httpClient, ILogger<OpenMeteoClient> log
         using var resp = await httpClient.GetAsync(url, ct);
         if (!resp.IsSuccessStatusCode)
         {
-            throw new HttpRequestException($"{SourceName}: Failed to fetch data from OpenMeteo API. Status code: {resp.StatusCode}", null ,resp.StatusCode);
+            throw new HttpRequestException($"{SourceName}: Failed to fetch data from {SourceName} API. Status code: {resp.StatusCode}", null ,resp.StatusCode);
         }
         var json = await resp.Content.ReadAsStringAsync(ct);
         return JsonSerializer.Deserialize<WeatherDailyResponse>(json);
@@ -117,8 +117,7 @@ public class OpenMeteoClient(HttpClient httpClient, ILogger<OpenMeteoClient> log
                 $"Weather Forecast for {day}",
                 $"Max Temp: {max}{weatherResponse.DailyUnits?.Temperature2mMax}, Min Temp: {min}{weatherResponse.DailyUnits?.Temperature2mMin}",
                 DateTime.Parse(day),
-                "Weather",
-                true));
+                "Weather"));
         }
         return new ApiClientResult(aggregatedList);
     }

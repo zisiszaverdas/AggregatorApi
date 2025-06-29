@@ -14,8 +14,8 @@ public class AggregateControllerTests
         // Arrange
         var expectedItems = new List<AggregatedItem>
         {
-            new("Source1", "Title1", "Desc1", System.DateTime.Today, "Weather", true),
-            new("Source2", "Title2", "Desc2", System.DateTime.Today, "News", true)
+            new("Source1", "Title1", "Desc1", System.DateTime.Today, "Weather"),
+            new("Source2", "Title2", "Desc2", System.DateTime.Today, "News")
         };
 
         var aggregationService = Substitute.For<IAggregationService>();

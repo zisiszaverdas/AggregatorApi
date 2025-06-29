@@ -5,6 +5,5 @@ public record AggregatedItem(
     string Title,
     string Description,
     DateTime Date,
-    string Category,
-    bool Success
+    string Category
 );
