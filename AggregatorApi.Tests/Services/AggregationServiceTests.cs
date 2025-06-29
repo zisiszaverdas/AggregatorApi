@@ -191,4 +191,29 @@ public class AggregationServiceTests
                 break;
         }
     }
+
+    [Fact]
+    public async Task GetAggregatedDataAsync_AggregatesErrorMessages()
+    {
+        // Arrange
+        var client1 = Substitute.For<IApiClient>();
+        client1.FetchAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ApiClientResult(new List<AggregatedItem>()) { ErrorMessage = "Error from API 1" }));
+
+        var client2 = Substitute.For<IApiClient>();
+        client2.FetchAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ApiClientResult(new List<AggregatedItem>()) { ErrorMessage = "Error from API 2" }));
+
+        var service = new AggregationService(new[] { client1, client2 });
+        var request = new AggregationRequest();
+
+        // Act
+        var response = await service.GetAggregatedDataAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(response.ErrorMessages);
+        var errors = response.ErrorMessages.ToList();
+        Assert.Contains(errors, e => e == "Error from API 1");
+        Assert.Contains(errors, e => e == "Error from API 2");
+    }
 }

@@ -17,8 +17,8 @@ builder.Services.AddHybridCache();
 
 builder.Services.AddScoped<IAggregationService, AggregationService>();
 builder.Services.AddSingleton<IApiStatisticsService, ApiStatisticsService>();
+builder.Services.AddSingleton<ISystemClock, SystemClock>();
 builder.Services.AddHostedService<PerformanceAnalysisService>();
-
 
 builder.Services.AddHttpClient<OpenMeteoClient>(client => client.BaseAddress = new Uri("https://historical-forecast-api.open-meteo.com/"))
     .AddApiClientResilience(OpenMeteoClient.ClientName);

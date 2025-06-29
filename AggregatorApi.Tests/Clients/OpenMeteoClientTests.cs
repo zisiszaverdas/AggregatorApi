@@ -1,7 +1,9 @@
 using AggregatorApi.Clients.OpenMeteo;
+using AggregatorApi.Services;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NSubstitute;
 using RichardSzalay.MockHttp;
 using System.Net;
 
@@ -19,9 +21,12 @@ public class OpenMeteoClientTests
         var logger = NSubstitute.Substitute.For<ILogger<OpenMeteoClient>>();
         var services = new ServiceCollection();
         services.AddHybridCache();
+        var clock = Substitute.For<ISystemClock>();
+        var now = DateTime.UtcNow;
+        clock.UtcNow.Returns(now);
         var provider = services.BuildServiceProvider();
         var cache = provider.GetRequiredService<HybridCache>();
-        return new OpenMeteoClient(httpClient, logger, cache);
+        return new OpenMeteoClient(httpClient, logger, cache, clock);
     }
 
     [Fact]

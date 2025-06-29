@@ -1,4 +1,5 @@
 using AggregatorApi.Models;
+using AggregatorApi.Services;
 using Microsoft.Extensions.Caching.Hybrid;
 
 namespace AggregatorApi.Clients.OpenMeteo;
@@ -15,10 +16,10 @@ public class OpenMeteoClient : ApiClientBase<WeatherDailyResponse>
     private readonly DateTime ToDate;
     private static readonly string CacheKey = $"OpenMeteoClient_Cache";
 
-    public OpenMeteoClient(HttpClient httpClient, ILogger<OpenMeteoClient> logger, HybridCache cache)
+    public OpenMeteoClient(HttpClient httpClient, ILogger<OpenMeteoClient> logger, HybridCache cache, ISystemClock clock)
         : base(httpClient, logger, cache, CacheKey)
     {
-        ToDate = DateTime.Today;
+        ToDate = clock.UtcNow.Date;
         FromDate = ToDate.AddDays(-7);
     }
 
