@@ -1,6 +1,7 @@
 using AggregatorApi.Clients;
 using AggregatorApi.Clients.OpenMeteo;
 using AggregatorApi.Clients.NewsApi;
+using AggregatorApi.Clients.NobelPrize;
 using AggregatorApi.Extension;
 using AggregatorApi.Middleware;
 using AggregatorApi.Services;
@@ -20,9 +21,12 @@ builder.Services.AddHttpClient<NewsApiClient>(client =>
     client.BaseAddress = new Uri("https://newsapi.org/");
     client.DefaultRequestHeaders.UserAgent.ParseAdd("AggregatorApi/1.0");
 }).AddApiClientResilience(NewsApiClient.ClientName);
+builder.Services.AddHttpClient<NobelPrizeClient>(client => client.BaseAddress = new Uri("http://api.nobelprize.org/"))
+.AddApiClientResilience(NobelPrizeClient.ClientName);
 
 builder.Services.AddTransient<IApiClient>(sp => sp.GetRequiredService<OpenMeteoClient>());
 builder.Services.AddTransient<IApiClient>(sp => sp.GetRequiredService<NewsApiClient>());
+builder.Services.AddTransient<IApiClient>(sp => sp.GetRequiredService<NobelPrizeClient>());
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
