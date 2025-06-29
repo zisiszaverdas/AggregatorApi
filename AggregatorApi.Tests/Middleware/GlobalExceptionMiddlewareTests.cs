@@ -44,6 +44,7 @@ public class GlobalExceptionMiddlewareTests
         var context = new DefaultHttpContext();
         context.TraceIdentifier = "trace-123";
         context.Request.Path = "/test-path";
+        context.Response.Body = new MemoryStream();
         var logger = Substitute.For<ILogger<GlobalExceptionMiddleware>>();
         RequestDelegate next = ctx => throw new InvalidOperationException("fail!");
         var middleware = new GlobalExceptionMiddleware(next, logger);
@@ -55,7 +56,7 @@ public class GlobalExceptionMiddlewareTests
         Assert.Equal("application/problem+json", context.Response.ContentType);
         Assert.Equal((int)HttpStatusCode.InternalServerError, context.Response.StatusCode);
 
-        context.Response.Body.Seek(0, System.IO.SeekOrigin.Begin);
+        context.Response.Body.Seek(0, SeekOrigin.Begin);
         var json = await new StreamReader(context.Response.Body).ReadToEndAsync();
         var problem = JsonSerializer.Deserialize<ProblemDetails>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
