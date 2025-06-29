@@ -51,7 +51,7 @@ public class OpenMeteoClientTests
         Assert.NotNull(result);
         Assert.Empty(result.Items);
         Assert.NotNull(result.ErrorMessage);
-        Assert.Contains("OpenMeteo: Failed to fetch data from OpenMeteo API.", result.ErrorMessage);
+        Assert.Contains("OpenMeteo: Failed to fetch data from API.", result.ErrorMessage);
     }
 
     [Fact]
@@ -146,6 +146,6 @@ public class OpenMeteoClientTests
         Assert.NotNull(result);
         Assert.Empty(result.Items);
         Assert.NotNull(result.ErrorMessage);
-        Assert.Contains("OpenMeteo: JSON deserialization error while processing OpenMeteo API response.", result.ErrorMessage);
+        Assert.Contains("OpenMeteo: JSON deserialization error while processing API response.", result.ErrorMessage);
     }
 }
