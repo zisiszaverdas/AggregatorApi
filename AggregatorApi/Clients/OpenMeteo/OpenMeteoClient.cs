@@ -5,7 +5,8 @@ namespace AggregatorApi.Clients.OpenMeteo;
 
 public class OpenMeteoClient(HttpClient HttpClient, ILogger<OpenMeteoClient> Logger) : IApiClient
 {
-    public string SourceName => "OpenMeteo";
+    public const string ClientName = "OpenMeteo";
+    public string SourceName => ClientName;
     private string forcastEndpoint => "v1/forecast";
     private const double AthensLatitude = 37.9838; // Athens, Greece
     private const double AthensLongitude = 23.7278; // Athens, Greece
@@ -13,7 +14,6 @@ public class OpenMeteoClient(HttpClient HttpClient, ILogger<OpenMeteoClient> Log
 
     public async Task<ApiClientResult> FetchAsync(CancellationToken ct)
     {
-        // TODO: handle errors and exceptions gracefully
         var toDate = DateTime.Today;
         var fromDate = toDate.AddDays(-7);
 

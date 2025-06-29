@@ -1,11 +1,16 @@
 using Polly;
+using AggregatorApi.Services;
+using AggregatorApi.Middleware;
 
 namespace AggregatorApi.Extension;
 
 public static class HttpClientBuilderExtensions
 {
-    public static IHttpClientBuilder AddApiClientResilience(this IHttpClientBuilder builder)
+    public static IHttpClientBuilder AddApiClientResilience(this IHttpClientBuilder builder, string sourceName)
     {
+        // Add the statistics handler first
+        builder.AddHttpMessageHandler(sp => new StatisticsTrackingHandler(sp.GetRequiredService<IApiStatisticsService>(), sourceName));
+
         builder.AddStandardResilienceHandler(options =>
         {
             options.Retry.MaxRetryAttempts = 3;
