@@ -1,4 +1,5 @@
 using AggregatorApi.Services;
+using NSubstitute;
 
 namespace AggregatorApi.Tests.Services;
 
@@ -7,7 +8,10 @@ public class ApiStatisticsServiceTests
     [Fact]
     public void Record_And_GetAll_TracksStatisticsCorrectly()
     {
-        var service = new ApiStatisticsService();
+        var clock = Substitute.For<ISystemClock>();
+        var now = DateTime.UtcNow;
+        clock.UtcNow.Returns(now, now.AddSeconds(1), now.AddSeconds(2), now.AddSeconds(3), now.AddSeconds(4), now.AddSeconds(5), now.AddSeconds(6));
+        var service = new ApiStatisticsService(clock);
         service.Record("api1", 50);
         service.Record("api1", 150);
         service.Record("api1", 250);

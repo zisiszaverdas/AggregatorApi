@@ -3,14 +3,16 @@ using System.Collections.Concurrent;
 
 namespace AggregatorApi.Services;
 
-public class ApiStatisticsService : IApiStatisticsService
+public class ApiStatisticsService(ISystemClock clock) : IApiStatisticsService
 {
-    private readonly ConcurrentDictionary<string, List<long>> _timings = new();
+    private readonly ConcurrentDictionary<string, ConcurrentQueue<ApiTimingEntry>> _timings = new();
     private readonly ConcurrentDictionary<string, int> _failures = new();
 
     public void Record(string apiName, long elapsedMs)
     {
-        _timings.AddOrUpdate(apiName, _ => new List<long> { elapsedMs }, (k, v) => { v.Add(elapsedMs); return v; });
+        var entry = new ApiTimingEntry(elapsedMs, clock.UtcNow);
+        var queue = _timings.GetOrAdd(apiName, _ => new ConcurrentQueue<ApiTimingEntry>());
+        queue.Enqueue(entry);
     }
 
     public void RecordError(string apiName)
@@ -23,12 +25,13 @@ public class ApiStatisticsService : IApiStatisticsService
         var allKeys = _timings.Keys.Union(_failures.Keys);
         foreach (var api in allKeys)
         {
-            var times = _timings.TryGetValue(api, out var t) ? t : new List<long>();
-            var total = times.Count + (_failures.TryGetValue(api, out var f) ? f : 0);
-            var avg = times.Count > 0 ? times.Average() : 0;
-            var fast = times.Count(x => x < 100);
-            var average = times.Count(x => x >= 100 && x <= 200);
-            var slow = times.Count(x => x > 200);
+            var times = _timings.TryGetValue(api, out var t) ? t : new ConcurrentQueue<ApiTimingEntry>();
+            var timesList = times.ToList();
+            var total = timesList.Count + (_failures.TryGetValue(api, out var f) ? f : 0);
+            var avg = timesList.Count > 0 ? timesList.Average(x => x.ElapsedMs) : 0;
+            var fast = timesList.Count(x => x.ElapsedMs < 100);
+            var average = timesList.Count(x => x.ElapsedMs >= 100 && x.ElapsedMs <= 200);
+            var slow = timesList.Count(x => x.ElapsedMs > 200);
             var failed = _failures.TryGetValue(api, out var failCount) ? failCount : 0;
 
             yield return new ApiStatisticsResult
@@ -43,4 +46,7 @@ public class ApiStatisticsService : IApiStatisticsService
             };
         }
     }
+
+    public IReadOnlyList<ApiTimingEntry> GetTimings(string apiName) =>
+        _timings.TryGetValue(apiName, out var queue) ? queue.ToList() : new List<ApiTimingEntry>();
 }
