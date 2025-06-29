@@ -1,94 +1,125 @@
 using AggregatorApi.Models;
+using Microsoft.Extensions.Caching.Hybrid;
 using System.Text.Json;
+using Polly.CircuitBreaker;
+using Polly.Timeout;
 
 namespace AggregatorApi.Clients.OpenMeteo;
 
-public class OpenMeteoClient(HttpClient HttpClient, ILogger<OpenMeteoClient> Logger) : IApiClient
+public class OpenMeteoClient(HttpClient httpClient, ILogger<OpenMeteoClient> logger, HybridCache cache) : IApiClient
 {
     public const string ClientName = "OpenMeteo";
     public string SourceName => ClientName;
-    private string forcastEndpoint => "v1/forecast";
-    private const double AthensLatitude = 37.9838; // Athens, Greece
-    private const double AthensLongitude = 23.7278; // Athens, Greece
+    private string ForecastEndpoint => "v1/forecast";
+    private const double AthensLatitude = 37.9838;
+    private const double AthensLongitude = 23.7278;
     private const string parameterDateTimeFormat = "yyyy-MM-dd";
+    private static readonly string CacheKey = $"OpenMeteoClient_Cache";
+    private static readonly HybridCacheEntryOptions EntryOptions = new() { Expiration = TimeSpan.FromMinutes(1) };
 
     public async Task<ApiClientResult> FetchAsync(CancellationToken ct)
     {
-        var toDate = DateTime.Today;
-        var fromDate = toDate.AddDays(-7);
-
-        var url = $"{forcastEndpoint}?latitude={AthensLatitude}" +
-            $"&longitude={AthensLongitude}" +
-            $"&start_date={fromDate.ToString(parameterDateTimeFormat)}" +
-            $"&end_date={toDate.ToString(parameterDateTimeFormat)}" +
-            $"&daily=temperature_2m_max,temperature_2m_min";
-        var json = string.Empty;
+        var url = BuildForecastUrl();
+        WeatherDailyResponse? weatherResponse = null;
         try
         {
-            using var resp = await HttpClient.GetAsync(url, ct);
-            if (!resp.IsSuccessStatusCode)
-            {
-                var errorMessage = $"{SourceName}: issue fetching data from OpenMeteo API. Status code: {resp.StatusCode}";
-                return ApiClientResult.CreateErrorResult(errorMessage, Logger);
-            }
-
-            json = await resp.Content.ReadAsStringAsync(ct);
+            weatherResponse = await cache.GetOrCreateAsync(
+                CacheKey,
+                async (ct) => await FetchData(url, ct),
+                EntryOptions);
+        }
+        catch (BrokenCircuitException ex)
+        {
+            var errorMessage = $"{SourceName}: Circuit breaker is open. External service is currently unavailable.";
+            return ApiClientResult.CreateErrorResult(errorMessage, logger, ex);
+        }
+        catch (TimeoutRejectedException ex)
+        {
+            var errorMessage = $"{SourceName}: Request timed out while fetching data from OpenMeteo API.";
+            return ApiClientResult.CreateErrorResult(errorMessage, logger, ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            var errorMessage = $"{SourceName}: Failed to fetch data from OpenMeteo API.";
+            return ApiClientResult.CreateErrorResult(errorMessage, logger, ex);
+        }
+        catch (JsonException ex)
+        {
+            var errorMessage = $"{SourceName}: JSON deserialization error while processing OpenMeteo API response.";
+            return ApiClientResult.CreateErrorResult(errorMessage, logger, ex);
         }
         catch (Exception ex)
         {
-            var errorMessage = $"{SourceName}: issue fetching data from OpenMeteo API. Exception: {ex.Message}";
-            return ApiClientResult.CreateErrorResult(errorMessage, Logger, ex);
+            var errorMessage = $"{SourceName}: Unexpected error while fetching data from OpenMeteo API.";
+            return ApiClientResult.CreateErrorResult(errorMessage, logger, ex);
         }
-       
-        return ParseWeatherResponse(json);
-       
+
+        if (weatherResponse == null)
+        {
+            var errorMessage = $"{SourceName}: issue fetching data from OpenMeteo API. Status code was not successful.";
+            return ApiClientResult.CreateErrorResult(errorMessage, logger);
+        }
+
+        if (!IsValidWeatherResponse(weatherResponse))
+        {
+            return ApiClientResult.CreateErrorResult($"{SourceName}: Error weather response JSON contains empty properties or could not be fetched.", logger);
+        }
+        return BuildApiClientResult(weatherResponse);
     }
 
-
-    private ApiClientResult ParseWeatherResponse(string json)
+    private async Task<WeatherDailyResponse?> FetchData(string url, CancellationToken ct)
     {
-        WeatherDailyResponse? weatherResponse;
-        try
+        using var resp = await httpClient.GetAsync(url, ct);
+        if (!resp.IsSuccessStatusCode)
         {
-            weatherResponse = JsonSerializer.Deserialize<WeatherDailyResponse>(json);
+            throw new HttpRequestException($"{SourceName}: Failed to fetch data from OpenMeteo API. Status code: {resp.StatusCode}", null ,resp.StatusCode);
         }
-        catch (Exception ex)
-        {
-            return ApiClientResult.CreateErrorResult($"{SourceName}: Error deserializing weather response JSON.", Logger, ex);
-        }
-        if (weatherResponse == null || weatherResponse.Daily == null)
-        {
-            return ApiClientResult.CreateErrorResult($"{SourceName}: Error weather response JSON contains empty properties.", Logger);
-        }
-        
-        if ((weatherResponse?.Daily?.Time) == null || weatherResponse.Daily.Temperature2mMax == null || weatherResponse.Daily.Temperature2mMin == null)
-        {
-            return ApiClientResult.CreateErrorResult($"{SourceName}: Error weather response JSON contains empty properties.", Logger);
-        }
+        var json = await resp.Content.ReadAsStringAsync(ct);
+        return JsonSerializer.Deserialize<WeatherDailyResponse>(json);
+    }
 
+    private string BuildForecastUrl()
+    {
+        var toDate = DateTime.Today;
+        var fromDate = toDate.AddDays(-7);
+        return $"{ForecastEndpoint}?latitude={AthensLatitude}" +
+               $"&longitude={AthensLongitude}" +
+               $"&start_date={fromDate.ToString(parameterDateTimeFormat)}" +
+               $"&end_date={toDate.ToString(parameterDateTimeFormat)}" +
+               $"&daily=temperature_2m_max,temperature_2m_min";
+    }
+
+    private static bool IsValidWeatherResponse(WeatherDailyResponse? response)
+    {
+        return response != null &&
+               response.Daily != null &&
+               response.Daily.Time != null &&
+               response.Daily.Temperature2mMax != null &&
+               response.Daily.Temperature2mMin != null;
+    }
+
+    private ApiClientResult BuildApiClientResult(WeatherDailyResponse weatherResponse)
+    {
         var aggregatedList = new List<AggregatedItem>();
-
-        int minimumCount = new[] {
-            weatherResponse.Daily.Time.Count,
-            weatherResponse.Daily.Temperature2mMax.Count,
-            weatherResponse.Daily.Temperature2mMin.Count
+        int minimumCount = new[]
+        {
+            weatherResponse.Daily!.Time!.Count,
+            weatherResponse.Daily.Temperature2mMax!.Count,
+            weatherResponse.Daily.Temperature2mMin!.Count
         }.Min();
-
         for (int i = 0; i < minimumCount; i++)
         {
             var day = weatherResponse.Daily.Time[i];
             var max = weatherResponse.Daily.Temperature2mMax[i];
             var min = weatherResponse.Daily.Temperature2mMin[i];
             aggregatedList.Add(new AggregatedItem(
-                    SourceName,
-                    $"Weather Forecast for {day}",
-                    $"Max Temp: {max}{weatherResponse.DailyUnits?.Temperature2mMax}, Min Temp: {min}{weatherResponse.DailyUnits?.Temperature2mMin}",
-                    DateTime.Parse(day),
-                    "Weather",
-                    true));
+                SourceName,
+                $"Weather Forecast for {day}",
+                $"Max Temp: {max}{weatherResponse.DailyUnits?.Temperature2mMax}, Min Temp: {min}{weatherResponse.DailyUnits?.Temperature2mMin}",
+                DateTime.Parse(day),
+                "Weather",
+                true));
         }
-
         return new ApiClientResult(aggregatedList);
     }
-
 }

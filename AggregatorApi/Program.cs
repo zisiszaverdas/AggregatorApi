@@ -10,6 +10,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddScoped<IAggregationService, AggregationService>();
 builder.Services.AddSingleton<IApiStatisticsService, ApiStatisticsService>();
 
+builder.Services.AddHybridCache();
+
 builder.Services.AddHttpClient<IApiClient, OpenMeteoClient>(client => client.BaseAddress = new Uri("https://historical-forecast-api.open-meteo.com/"))
     .AddApiClientResilience(OpenMeteoClient.ClientName);
 
