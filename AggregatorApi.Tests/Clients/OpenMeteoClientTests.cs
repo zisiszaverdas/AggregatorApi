@@ -1,22 +1,27 @@
-using System.Net;
 using AggregatorApi.Clients.OpenMeteo;
+using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NSubstitute;
 using RichardSzalay.MockHttp;
+using System.Net;
 
 namespace AggregatorApi.Tests.Clients;
 
 public class OpenMeteoClientTests
 {
     // Helper to create a client with BaseAddress set
-    private static OpenMeteoClient CreateClientWithBase(MockHttpMessageHandler mockHttp)
+    private OpenMeteoClient CreateClientWithBase(MockHttpMessageHandler mockHttp)
     {
         var httpClient = new HttpClient(mockHttp)
         {
             BaseAddress = new Uri("https://api.open-meteo.com/")
         };
-        var logger = Substitute.For<ILogger<OpenMeteoClient>>();
-        return new OpenMeteoClient(httpClient, logger);
+        var logger = NSubstitute.Substitute.For<ILogger<OpenMeteoClient>>();
+        var services = new ServiceCollection();
+        services.AddHybridCache();
+        var provider = services.BuildServiceProvider();
+        var cache = provider.GetRequiredService<HybridCache>();
+        return new OpenMeteoClient(httpClient, logger, cache);
     }
 
     [Fact]
@@ -46,7 +51,7 @@ public class OpenMeteoClientTests
         Assert.NotNull(result);
         Assert.Empty(result.Items);
         Assert.NotNull(result.ErrorMessage);
-        Assert.Contains("Status code", result.ErrorMessage);
+        Assert.Contains("OpenMeteo: Failed to fetch data from OpenMeteo API.", result.ErrorMessage);
     }
 
     [Fact]
@@ -141,6 +146,6 @@ public class OpenMeteoClientTests
         Assert.NotNull(result);
         Assert.Empty(result.Items);
         Assert.NotNull(result.ErrorMessage);
-        Assert.Contains("deserializing", result.ErrorMessage);
+        Assert.Contains("OpenMeteo: JSON deserialization error while processing OpenMeteo API response.", result.ErrorMessage);
     }
 }
