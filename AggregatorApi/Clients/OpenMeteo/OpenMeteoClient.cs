@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace AggregatorApi.Clients.OpenMeteo;
 
-public class OpenMeteoClient(HttpClient HttpClient) : IApiClient
+public class OpenMeteoClient(HttpClient HttpClient, ILogger<OpenMeteoClient> Logger) : IApiClient
 {
     public string SourceName => "OpenMeteo";
     private string forcastEndpoint => "v1/forecast";
@@ -11,7 +11,7 @@ public class OpenMeteoClient(HttpClient HttpClient) : IApiClient
     private const double AthensLongitude = 23.7278; // Athens, Greece
     private const string parameterDateTimeFormat = "yyyy-MM-dd";
 
-    public async Task<IEnumerable<AggregatedItem>> FetchAsync(CancellationToken ct)
+    public async Task<ApiClientResult> FetchAsync(CancellationToken ct)
     {
         // TODO: handle errors and exceptions gracefully
         var toDate = DateTime.Today;
@@ -26,7 +26,8 @@ public class OpenMeteoClient(HttpClient HttpClient) : IApiClient
         using var resp = await HttpClient.GetAsync(url, ct);
         if (!resp.IsSuccessStatusCode)
         {
-            return Enumerable.Empty<AggregatedItem>();
+            var errorMessage = $"{SourceName}: issue fetching data from OpenMeteo API. Status code: {resp.StatusCode}";
+            return ApiClientResult.CreateErrorResult(errorMessage, Logger);
         }
 
         var json = await resp.Content.ReadAsStringAsync(ct);
@@ -35,22 +36,32 @@ public class OpenMeteoClient(HttpClient HttpClient) : IApiClient
         }
         catch (Exception ex)
         {
-            return Enumerable.Empty<AggregatedItem>();
+            var errorMessage = $"{SourceName}: issue fetching data from OpenMeteo API. Status code: {resp.StatusCode}";
+            return ApiClientResult.CreateErrorResult(errorMessage, Logger, ex);
         }
        
     }
 
-    private IEnumerable<AggregatedItem> ParseWeatherResponse(string json)
+
+    private ApiClientResult ParseWeatherResponse(string json)
     {
-        var weatherResponse = JsonSerializer.Deserialize<WeatherDailyResponse>(json);
+        WeatherDailyResponse? weatherResponse;
+        try
+        {
+            weatherResponse = JsonSerializer.Deserialize<WeatherDailyResponse>(json);
+        }
+        catch (Exception ex)
+        {
+            return ApiClientResult.CreateErrorResult($"{SourceName}: Error deserializing weather response JSON.", Logger, ex);
+        }
         if (weatherResponse == null || weatherResponse.Daily == null)
         {
-            return Enumerable.Empty<AggregatedItem>();
+            return ApiClientResult.CreateErrorResult($"{SourceName}: Error weather response JSON contains empty properties.", Logger);
         }
         
         if ((weatherResponse?.Daily?.Time) == null || weatherResponse.Daily.Temperature2mMax == null || weatherResponse.Daily.Temperature2mMin == null)
         {
-            return Enumerable.Empty<AggregatedItem>();
+            return ApiClientResult.CreateErrorResult($"{SourceName}: Error weather response JSON contains empty properties.", Logger);
         }
 
         var aggregatedList = new List<AggregatedItem>();
@@ -75,7 +86,7 @@ public class OpenMeteoClient(HttpClient HttpClient) : IApiClient
                     true));
         }
 
-        return aggregatedList;
+        return new ApiClientResult(aggregatedList);
     }
 
 }

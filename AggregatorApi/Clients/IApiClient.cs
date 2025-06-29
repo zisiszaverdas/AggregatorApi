@@ -5,5 +5,5 @@ namespace AggregatorApi.Clients;
 public interface IApiClient
 {
     string SourceName { get; }
-    Task<IEnumerable<AggregatedItem>> FetchAsync(CancellationToken ct);
+    Task<ApiClientResult> FetchAsync(CancellationToken ct);
 }
