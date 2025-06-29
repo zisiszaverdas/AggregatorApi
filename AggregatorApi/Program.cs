@@ -13,10 +13,12 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddHybridCache();
+
 builder.Services.AddScoped<IAggregationService, AggregationService>();
 builder.Services.AddSingleton<IApiStatisticsService, ApiStatisticsService>();
+builder.Services.AddHostedService<PerformanceAnalysisService>();
 
-builder.Services.AddHybridCache();
 
 builder.Services.AddHttpClient<OpenMeteoClient>(client => client.BaseAddress = new Uri("https://historical-forecast-api.open-meteo.com/"))
     .AddApiClientResilience(OpenMeteoClient.ClientName);
