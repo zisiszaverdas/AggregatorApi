@@ -1,5 +1,6 @@
 using AggregatorApi.Clients;
 using AggregatorApi.Clients.OpenMeteo;
+using AggregatorApi.Middleware;
 using AggregatorApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +15,8 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+app.UseMiddleware<GlobalExceptionMiddleware>();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
