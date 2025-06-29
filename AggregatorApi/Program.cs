@@ -6,7 +6,7 @@ using AggregatorApi.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddTransient<IAggregationService, AggregationService>();
+builder.Services.AddScoped<IAggregationService, AggregationService>();
 
 builder.Services.AddHttpClient<IApiClient, OpenMeteoClient>(client => client.BaseAddress = new Uri(" https://historical-forecast-api.open-meteo.com/"));
 
