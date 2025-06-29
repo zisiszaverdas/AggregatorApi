@@ -3,6 +3,9 @@ using System.Collections.Concurrent;
 
 namespace AggregatorApi.Services;
 
+/// <summary>
+/// Thread-safe in-memory implementation of <see cref="IApiStatisticsService"/> for tracking API request statistics.
+/// </summary>
 public class ApiStatisticsService(ISystemClock clock) : IApiStatisticsService
 {
     private readonly ConcurrentDictionary<string, ConcurrentQueue<ApiTimingEntry>> _timings = new();

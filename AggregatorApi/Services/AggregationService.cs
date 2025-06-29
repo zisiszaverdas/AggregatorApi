@@ -3,10 +3,17 @@ using AggregatorApi.Clients;
 
 namespace AggregatorApi.Services;
 
+/// <summary>
+/// Aggregates data from multiple external APIs, providing unified filtering, sorting, and error aggregation.
+/// </summary>
 public class AggregationService : IAggregationService
 {
     private readonly IEnumerable<IApiClient> _apiClients;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AggregationService"/> class.
+    /// </summary>
+    /// <param name="apiClients">The collection of API clients to aggregate data from.</param>
     public AggregationService(IEnumerable<IApiClient> apiClients)
     {
         _apiClients = apiClients;
