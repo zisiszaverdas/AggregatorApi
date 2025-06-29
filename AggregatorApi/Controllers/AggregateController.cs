@@ -1,10 +1,12 @@
 using AggregatorApi.Models;
 using AggregatorApi.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AggregatorApi.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("[controller]")]
 public class AggregateController(IAggregationService AggregationService) : ControllerBase
 {
