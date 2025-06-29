@@ -12,16 +12,14 @@ public class AggregationServiceTests
         string title = "TestTitle",
         string description = "TestDescription",
         DateTime? date = null,
-        string category = "TestCategory",
-        bool isActive = true)
+        string category = "TestCategory")
     {
         return new AggregatedItem(
             source,
             title,
             description,
             date ?? DateTime.Today,
-            category,
-            isActive
+            category
         );
     }
 

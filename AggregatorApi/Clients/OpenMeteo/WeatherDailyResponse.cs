@@ -1,6 +1,6 @@
-namespace AggregatorApi.Clients.OpenMeteo;
-
 using System.Text.Json.Serialization;
+
+namespace AggregatorApi.Clients.OpenMeteo;
 
 public class WeatherDailyResponse
 {

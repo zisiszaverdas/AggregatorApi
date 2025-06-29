@@ -1,5 +1,6 @@
 using AggregatorApi.Clients;
 using AggregatorApi.Clients.OpenMeteo;
+using AggregatorApi.Clients.NewsApi;
 using AggregatorApi.Extension;
 using AggregatorApi.Middleware;
 using AggregatorApi.Services;
@@ -12,8 +13,16 @@ builder.Services.AddSingleton<IApiStatisticsService, ApiStatisticsService>();
 
 builder.Services.AddHybridCache();
 
-builder.Services.AddHttpClient<IApiClient, OpenMeteoClient>(client => client.BaseAddress = new Uri("https://historical-forecast-api.open-meteo.com/"))
+builder.Services.AddHttpClient<OpenMeteoClient>(client => client.BaseAddress = new Uri("https://historical-forecast-api.open-meteo.com/"))
     .AddApiClientResilience(OpenMeteoClient.ClientName);
+builder.Services.AddHttpClient<NewsApiClient>(client =>
+{
+    client.BaseAddress = new Uri("https://newsapi.org/");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("AggregatorApi/1.0");
+}).AddApiClientResilience(NewsApiClient.ClientName);
+
+builder.Services.AddTransient<IApiClient>(sp => sp.GetRequiredService<OpenMeteoClient>());
+builder.Services.AddTransient<IApiClient>(sp => sp.GetRequiredService<NewsApiClient>());
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
