@@ -1,5 +1,8 @@
 namespace AggregatorApi.Services;
 
+/// <summary>
+/// Background service that periodically analyzes API performance statistics and logs anomalies.
+/// </summary>
 public class PerformanceAnalysisService : BackgroundService
 {
     private readonly ILogger<PerformanceAnalysisService> logger;
@@ -12,6 +15,12 @@ public class PerformanceAnalysisService : BackgroundService
     private const int _minWindowSamples = 5;
     private const double _anomalyThreshold = 1.5;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PerformanceAnalysisService"/> class.
+    /// </summary>
+    /// <param name="logger">The logger to use for logging anomalies and errors.</param>
+    /// <param name="statisticsService">The statistics service to analyze.</param>
+    /// <param name="clock">The system clock for time calculations.</param>
     public PerformanceAnalysisService(ILogger<PerformanceAnalysisService> logger, IApiStatisticsService statisticsService, ISystemClock clock)
     {
         this.logger = logger;
@@ -35,6 +44,9 @@ public class PerformanceAnalysisService : BackgroundService
         }
     }
 
+    /// <summary>
+    /// Analyzes API performance statistics and logs a warning if a performance anomaly is detected.
+    /// </summary>
     private void AnalyzePerformance()
     {
         var allStats = statisticsService.GetAll();
